@@ -13,10 +13,15 @@ Please check the [project page](https://jasonqsy.github.io/Articulation3D/) for 
 
 ## Setup
 
-```bash
-# conda
-VERSION_ALIAS="d2planercnn" PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install anaconda3-2020.11
+We're using [pyenv](https://github.com/pyenv/pyenv) to set up the anaconda environment.
 
+```bash
+VERSION_ALIAS="planercnn" PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install anaconda3-2020.11
+```
+
+To install python packages,
+
+```bash
 # pytorch and pytorch3d
 pip install scikit-image matplotlib imageio plotly opencv-python
 conda install -c pytorch pytorch=1.7.1 torchvision cudatoolkit=10.2
@@ -27,13 +32,15 @@ conda install pytorch3d -c pytorch3d
 # detectron2 with pytorch 1.7, cuda 10.2
 python -m pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu102/torch1.7/index.html
 
-# install planercnn
-cd planercnn
-pip install -e .
+# other packages
 pip install mapbox-earcut
 pip install numpy-quaternion
 pip install --upgrade numpy  # upgrade from 1.19 to 1.20, otherwise numpy-quaternion does not work
 pip install imageio-ffmpeg
+
+# install planercnn
+cd planercnn
+pip install -e .
 ```
 
 ## Demo
