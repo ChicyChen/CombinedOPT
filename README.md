@@ -45,16 +45,10 @@ pip install -e .
 
 ## Demo
 
-To run the model on a single image,
+To run the model and temporal optimization on a video,
 
 ```bash
-tbd
-```
-
-To run both the model and temporal optimization on a video, 
-
-```bash
-tbd
+python tools/inference.py --config config/config.yaml --input example.mp4 --output output
 ```
 
 ## Experiments 
