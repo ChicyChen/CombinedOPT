@@ -43,12 +43,26 @@ cd planercnn
 pip install -e .
 ```
 
+If necessary, download our [pretrained model](https://www.dropbox.com/s/50uderl5ynan2yt/model_0059999.pth?dl=0) and put it at `exps/model_0059999.pth`
+
+```bash
+mkdir exps
+cd exps
+wget https://www.dropbox.com/s/50uderl5ynan2yt/model_0059999.pth?dl=0
+```
+
 ## Demo
 
 To run the model and temporal optimization on a video,
 
 ```bash
 python tools/inference.py --config config/config.yaml --input example.mp4 --output output
+```
+
+To save the 3d model, add `--save-obj` and `--webvis` flags,
+
+```bash
+python tools/inference.py --config config/config.yaml --input example.mp4 --output output --save-obj --webvis
 ```
 
 ## Experiments 
