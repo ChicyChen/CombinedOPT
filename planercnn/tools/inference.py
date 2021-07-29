@@ -239,6 +239,8 @@ def main():
     opt_preds = optimize_planes(preds, planes, '3dc', frames=frames)
 
     # video visualization in 2D
+    if not os.path.isdir(args.output):
+        os.mkdir(args.output)
     writer = imageio.get_writer(os.path.join(args.output, '{}.mp4'.format('output')), fps=fps)
     for i, im in (enumerate(frames)):
         p_instance = opt_preds[i]
@@ -255,8 +257,10 @@ def main():
             normal_vis = get_normal_map(p_instance.pred_planes, p_instance.pred_masks.cpu())
 
         # combine visualization and generate output
-        combined_vis = np.concatenate((seg_pred, normal_vis, org_vis), axis=1)
-        writer.append_data(combined_vis)
+
+        # combined_vis = np.concatenate((seg_pred, normal_vis, org_vis), axis=1)
+        # writer.append_data(combined_vis)
+        writer.append_data(seg_pred)
 
     if args.save_obj:
         # select frame_ids you want to visualize
