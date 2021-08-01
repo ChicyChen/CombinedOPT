@@ -1,5 +1,6 @@
 # Input an video, output the predicted smpl mesh of each frame & articulation axis as well as 
-# planes of frame 0,30,60,90 as .obj files 
+# planes of frame 0,30,60,90 as .obj files, and 2d mask of the plane of each frame as .txt 
+# files in the size of the original video
 
 from __future__ import division
 from __future__ import print_function
@@ -56,7 +57,7 @@ import config
 import os.path as osp
 
 """
-python combined_demo.py --config config/config.yaml --input /z/syqian/articulation_data/step2_filtered_clips/TfqqWBlMj6Q_10_2880.mp4 --output example_opt329_output --save-obj --webvis
+python combined_demo.py --config config/config.yaml --input /z/syqian/articulation_data/step2_filtered_clips/CxTFIEpSgew_34_360.mp4 --output demo_3336_output --save-obj --webvis
 python combined_demo.py --config config/config.yaml --save-obj --webvis
 """
 
@@ -295,7 +296,7 @@ def main():
         index = np.random.randint(len(img_list))
         args.input = img_list[index]
         print("Randomly select video", args.input)
-        args.output = "example" + str(index) + "_output"
+        args.output = "demo_" + str(index) + "_output"
 
     video_path = args.input
     reader = imageio.get_reader(video_path)
