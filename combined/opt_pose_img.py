@@ -1,5 +1,5 @@
-# After obtaining 2D mask of the plane, 3D mesh of the plane, 3D mesh of the person,
-# and 2d mask of the person,
+# After obtaining 2D mask of the plane, 3D mesh of the plane, 2d mask of the person,
+# and pose & camera translation
 # and then optimize rotation & translation (& scale) parameters of the plane & the person 
 # using the render of pytorch3d.
 
@@ -59,11 +59,12 @@ from detectron2.projects import point_rend
 
 
 from opt_utils import *
+from models import SMPL
 
 
 # Note: need several files existed in advance.
 """
-python opt_single_img.py --input /data/siyich/cmr_art/mask_mesh_3336_output --frame 60 --output /data/siyich/cmr_art/opt_3336_output
+python opt_pose_img.py --input /data/siyich/cmr_art/mask_mesh_758_output --frame 60 --output /data/siyich/cmr_art/opt_758_output
 """
 
 parser = argparse.ArgumentParser(
@@ -91,6 +92,9 @@ else:
 input_dir = os.path.join(args.input, 'frame_{:0>4}'.format(args.frame))
 obj_object = os.path.join(input_dir, "arti_pred.obj")
 obj_person = os.path.join(input_dir, "smpl_pred.obj")
+pose_person = os.path.join(input_dir, "person_pose.txt")
+shape_person = os.path.join(input_dir, "person_shape.txt")
+trans_person = os.path.join(input_dir, "person_trans.txt")
 mask_plane_path = os.path.join(input_dir, "plane_mask.txt")
 mask_person_path = os.path.join(input_dir, "person_mask.txt")
 target_image_name = os.path.join(input_dir, "origin_frame.png")
@@ -181,6 +185,19 @@ mesh1.verts_list()[0] = scaleAR.transform_points(mesh1.verts_list()[0])
 
 mesh2 = get_smpl_mesh(obj_person,move=False,scale=True,device=device)
 
+##################################################################
+# Load parameters of the smpl from input
+##################################################################
+
+file = open(pose_person, "rb")
+person_pose = np.load(file)
+file.close
+
+file = open(shape_person, "rb")
+person_shape = np.load(file)
+file.close
+
+person_trans = np.loadtxt(trans_person)
 
 ##################################################################
 # create the combined mesh
@@ -216,22 +233,21 @@ mesh = Meshes(verts=verts.unsqueeze(0),
 ##################################################################
 # Optimize the combinition of the two
 ##################################################################
-torch.autograd.set_detect_anomaly(True)
 
 loss_weights = {
-                "lw_ordinal_depth": torch.tensor(1.0).float().to(device),
+                "lw_ordinal_depth": torch.tensor(0.0).float().to(device),
                 "lw_sil": torch.tensor(1.0).float().to(device),
-                "lw_inter": torch.tensor(1.0).float().to(device),
-                "lw_centroid": torch.tensor(1.0).float().to(device),
+                "lw_inter": torch.tensor(0.0).float().to(device),
+                "lw_centroid": torch.tensor(0.0).float().to(device),
                 }
-num_iterations = 10
-lr = 1e-3
+num_iterations = 5
+lr = 1
 
-model = simplePHOSA(
+model = smplPHOSA(
     gene_mask = gene_mask,
     in_w = in_w,
-    translations_person = torch.FloatTensor([[0, 0, 0]]),
-    rotations_person = torch.FloatTensor([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+    translations_person = torch.FloatTensor([[person_trans[0], person_trans[1], person_trans[2]]]),
+    rotations_person = torch.FloatTensor([[-1, 0, 0], [0, -1, 0], [0, 0, 1]]),
     translations_object = torch.FloatTensor([[0, 0, 0]]),
     rotations_object = torch.FloatTensor([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
     masks_person = masks_person.float(), # float
@@ -240,35 +256,40 @@ model = simplePHOSA(
     target_object = target_object,
     verts_object = mesh1.verts_packed().unsqueeze(0),
     faces_object = mesh1.faces_packed().unsqueeze(0),
-    verts_person = mesh2.verts_packed().unsqueeze(0),
+    # verts_person = mesh2.verts_packed().unsqueeze(0),
     faces_person = mesh2.faces_packed().unsqueeze(0),
+    person_pose = torch.tensor(person_pose),
+    person_shape =  torch.tensor(person_shape),
     object_textures = object_textures,
     smpl_textures = smpl_textures,
     textures = textures,
     int_scale_init=1.0,
     device = device)
 
-model = model.to(device)
+# model.get_verts_object()
+# model.get_verts_person()
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 loop = tqdm(range(num_iterations))
 for _ in loop:
-    with torch.autograd.detect_anomaly():
-        optimizer.zero_grad()
-        loss = model(loss_weights=loss_weights)
-        print("loss:",loss)
-        loop.set_description(f"Loss {loss.data:.4f}")
-        loss.backward()
-        optimizer.step()
+    optimizer.zero_grad()
+    loss = model(loss_weights=loss_weights)
+    print("loss:",loss)
+    loop.set_description(f"Loss {loss.data:.4f}")
+    loss.backward()
+    optimizer.step()
 
-        parameters = model.get_parameters()
-        # print("scales_object", parameters["scales_object"])
-        # print("scales_person", parameters["scales_person"])
-        # print("rotations_object", parameters["rotations_object"])
-        print("rotations_person", parameters["rotations_person"])
-        # print("translations_object", parameters["translations_object"])
-        print("translations_person", parameters["translations_person"])
+    parameters = model.get_parameters()
+    # print("scales_object", parameters["scales_object"])
+    # print("scales_person", parameters["scales_person"])
+    # print("rotations_object", parameters["rotations_object"])
+    # print("rotations_person", parameters["rotations_person"])
+    # print("translations_object", parameters["translations_object"])
+    print("translations_person", parameters["translations_person"])
+    # print("person_zscale", parameters["person_zscale"])
+    # print("person_pose", parameters["person_pose"])
+    print("person_shape", parameters["person_shape"])
 
 
 ##################################################################
@@ -276,12 +297,15 @@ for _ in loop:
 ##################################################################
 
 parameters = model.get_parameters()
-print("scales_object", parameters["scales_object"])
-print("scales_person", parameters["scales_person"])
-print("rotations_object", parameters["rotations_object"])
-print("rotations_person", parameters["rotations_person"])
-print("translations_object", parameters["translations_object"])
+# print("scales_object", parameters["scales_object"])
+# print("scales_person", parameters["scales_person"])
+# print("rotations_object", parameters["rotations_object"])
+# print("rotations_person", parameters["rotations_person"])
+# print("translations_object", parameters["translations_object"])
 print("translations_person", parameters["translations_person"])
+# print("person_zscale", parameters["person_zscale"])
+# print("person_pose", parameters["person_pose"])
+print("person_shape", parameters["person_shape"])
 
 
 ##################################################################

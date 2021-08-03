@@ -2,7 +2,6 @@
 # 3D articulation plane mesh as seperate .obj files, 2d masks of the plane 
 # and person as seperate.txt files in the size of the original video, and
 # the original frame
-# Added: save smpl parameters
 
 from __future__ import division
 from __future__ import print_function
@@ -62,8 +61,8 @@ import config
 
 
 """
-python generate_mesh_mask.py --config config/config.yaml --input /z/syqian/articulation_data/step2_filtered_clips/CxTFIEpSgew_34_360.mp4 --output /data/siyich/cmr_art/mask_mesh_3336_output --webvis
-python generate_mesh_mask.py --config config/config.yaml --webvis
+python generate_smpl.py --config config/config.yaml --input /z/syqian/articulation_data/step2_filtered_clips/CxTFIEpSgew_34_360.mp4 --output /data/siyich/cmr_art/mask_mesh_3336_output --webvis
+python generate_smpl.py --config config/config.yaml --webvis
 """
 
 
@@ -347,14 +346,12 @@ def main():
         norm_img = norm_img.to(DEVICE)
         # pose estimation
         with torch.no_grad():
-            pred_vertices, pred_vertices_smpl, pred_camera, pred_pose, pred_shape = cmr(norm_img)
+            _, _, pred_camera, pred_pose, pred_shape = cmr(norm_img)
             pred_pose_array.append(pred_pose)
             pred_shape_array.append(pred_shape)
         # Calculate camera parameters for rendering
         camera_translation = torch.stack([pred_camera[:,1], pred_camera[:,2], 2*config.FOCAL_LENGTH/(config.INPUT_RES * pred_camera[:,0] +1e-9)],dim=-1)
         camera_translation = camera_translation[0].cpu().numpy()
-
-        # Save parameters for optimizing the smpl model
         pose_person_outfile = os.path.join(output_dir, 'person_pose.txt')
         shape_person_outfile = os.path.join(output_dir, 'person_shape.txt')
         camtrans_person_outfile = os.path.join(output_dir, 'person_trans.txt')
@@ -365,7 +362,9 @@ def main():
         np.save(file, pred_shape.cpu().numpy())
         file.close
         np.savetxt(camtrans_person_outfile, camera_translation)
+        print("Finish frame", str(i))
 
+        """
         # Change the world coordinates to be same as the camera
         Rt = np.array(((-1,0,0,0),
                         (0,-1,0,0),
@@ -411,8 +410,10 @@ def main():
         mask_person_outfile = os.path.join(output_dir, 'person_mask.txt')
         np.savetxt(mask_person_outfile, mask_person_pred.cpu().numpy())
         print("The person mask is saved in", mask_person_outfile)
+        """
     reader.close()
 
+    """
     # temporal optimization for articulation
     planes = track_planes(preds)
     opt_preds = optimize_planes(preds, planes, '3dc', frames=frames)
@@ -440,7 +441,7 @@ def main():
 
         # save 3D plane mesh
         save_obj_model(args, opt_preds, frames, i)
-        
+        """
 
 if __name__ == "__main__":
     main()

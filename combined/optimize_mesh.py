@@ -64,7 +64,7 @@ from opt_utils import *
 
 # Note: need several files existed in advance.
 """
-python optimize_mesh.py --input /data/siyich/cmr_art/mask_mesh_3336_output --output /data/siyich/cmr_art/opt_3336_output
+python optimize_mesh.py --input /data/siyich/cmr_art/mask_mesh_1361_output --output /data/siyich/cmr_art/opt_1361_output
 """
 
 parser = argparse.ArgumentParser(
@@ -312,12 +312,7 @@ for i in range(len(frame_dir_list)):
         loop = tqdm(range(num_iterations))
         for _ in loop:
             optimizer.zero_grad()
-            loss_dict = model(loss_weights=loss_weights)
-            # loss_dict_weighted = {
-            #     k: loss_dict[k] * loss_weights[k.replace("loss", "lw")] for k in loss_dict
-            # }
-            loss_dict_weighted = loss_dict
-            loss = sum(loss_dict_weighted.values())
+            loss = model(loss_weights=loss_weights)
             print("loss:",loss)
             loop.set_description(f"Loss {loss.data:.4f}")
             loss.backward()
