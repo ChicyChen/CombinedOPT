@@ -528,13 +528,13 @@ class smplPHOSA(nn.Module):
         self.smpl_textures = smpl_textures
         self.textures = textures
         translation_person = translations_person.detach().clone()
-        self.translations_person = nn.Parameter(translation_person, requires_grad=True)
+        self.translations_person = nn.Parameter(translation_person, requires_grad=False)
         rotations_person = rotations_person.detach().clone()
         self.rotations_person = nn.Parameter(rotations_person, requires_grad=False)
         translation_object = translations_object.detach().clone()
-        self.person_pose = nn.Parameter(person_pose, requires_grad=False)
+        self.person_pose = nn.Parameter(person_pose, requires_grad=True)
         person_pose = person_pose.detach().clone()
-        self.person_shape = nn.Parameter(person_shape, requires_grad=True)
+        self.person_shape = nn.Parameter(person_shape, requires_grad=False)
         person_shape = person_shape.detach().clone()
         self.translations_object = nn.Parameter(translation_object, requires_grad=False)
         rotations_object = rotations_object.detach().clone()

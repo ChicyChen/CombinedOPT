@@ -241,7 +241,7 @@ loss_weights = {
                 "lw_centroid": torch.tensor(0.0).float().to(device),
                 }
 num_iterations = 5
-lr = 1
+lr = 5e-3
 
 model = smplPHOSA(
     gene_mask = gene_mask,
@@ -286,9 +286,9 @@ for _ in loop:
     # print("rotations_object", parameters["rotations_object"])
     # print("rotations_person", parameters["rotations_person"])
     # print("translations_object", parameters["translations_object"])
-    print("translations_person", parameters["translations_person"])
+    # print("translations_person", parameters["translations_person"])
     # print("person_zscale", parameters["person_zscale"])
-    # print("person_pose", parameters["person_pose"])
+    print("person_pose", parameters["person_pose"])
     print("person_shape", parameters["person_shape"])
 
 
@@ -302,9 +302,9 @@ parameters = model.get_parameters()
 # print("rotations_object", parameters["rotations_object"])
 # print("rotations_person", parameters["rotations_person"])
 # print("translations_object", parameters["translations_object"])
-print("translations_person", parameters["translations_person"])
+# print("translations_person", parameters["translations_person"])
 # print("person_zscale", parameters["person_zscale"])
-# print("person_pose", parameters["person_pose"])
+print("person_pose", parameters["person_pose"])
 print("person_shape", parameters["person_shape"])
 
 
