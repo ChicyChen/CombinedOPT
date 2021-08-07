@@ -858,7 +858,7 @@ def get_smpl_mesh(obj_filename,move=True,dist=2.5,texture=True,scale=True,device
     return mesh2
 
 
-def save_out(mesh, renderer, outpath, device, use_bg=False, bg_img=None):
+def save_out(mesh, renderer, outpath, device, use_bg=False, bg_img=None, write_img=True):
     img = renderer(mesh.to(device))
     img = img[0].cpu().numpy()
     img = img[:, :, :3]/np.amax(img[:, :, :3])
@@ -867,7 +867,8 @@ def save_out(mesh, renderer, outpath, device, use_bg=False, bg_img=None):
     if use_bg:
         mask = np.sum(img, axis=2, keepdims=True) == 0
         img = img + mask*bg_img
-    cv2.imwrite(outpath, img)
+    if write_img:
+        cv2.imwrite(outpath, img)
     return img
 
 

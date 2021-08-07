@@ -72,6 +72,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument("--input", default="/data/siyich/cmr_art/mask_mesh_3336_output", help="input directory")
 parser.add_argument("--output", default="/data/siyich/cmr_art/opt_3336_output", help="output directory")
 parser.add_argument("--frame", default=60, type=int, help="target frame")
+parser.add_argument('--simulate', action='store_true', help="generate a simulation for optimization")
 args = parser.parse_args()
 
 
@@ -104,6 +105,7 @@ only_arti = os.path.join(output_dir, "arti_opt.obj")
 only_smpl = os.path.join(output_dir, "smpl_opt.obj")
 combine_initial = os.path.join(output_dir, "combine_initial.png")
 combine_opt = os.path.join(output_dir, "combine_optimize.png")
+outvideo = os.path.join(output_dir, "simulation_optimize.mp4")
 
 
 # Read input image
@@ -137,6 +139,7 @@ masks_person = np.loadtxt(mask_person_path)
 masks_person = torch.tensor(masks_person).to(device)
 masks_person = m(masks_person)
 masks_person = masks_person > 0
+square_im[masks_person.cpu()] = 122
 
 # draw_masks_person = masks_person.float().cpu().numpy()
 # draw_masks_person = draw_masks_person.reshape((in_w,in_w,1))
@@ -216,7 +219,7 @@ mesh = Meshes(verts=verts.unsqueeze(0),
 ##################################################################
 # Optimize the combinition of the two
 ##################################################################
-torch.autograd.set_detect_anomaly(True)
+# torch.autograd.set_detect_anomaly(True)
 
 loss_weights = {
                 "lw_ordinal_depth": torch.tensor(1.0).float().to(device),
@@ -224,7 +227,7 @@ loss_weights = {
                 "lw_inter": torch.tensor(1.0).float().to(device),
                 "lw_centroid": torch.tensor(1.0).float().to(device),
                 }
-num_iterations = 10
+num_iterations = 30
 lr = 1e-3
 
 model = simplePHOSA(
@@ -252,23 +255,96 @@ model = model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
+simu_img_list = []
+
 loop = tqdm(range(num_iterations))
 for _ in loop:
-    with torch.autograd.detect_anomaly():
-        optimizer.zero_grad()
-        loss = model(loss_weights=loss_weights)
-        print("loss:",loss)
-        loop.set_description(f"Loss {loss.data:.4f}")
-        loss.backward()
-        optimizer.step()
+    # with torch.autograd.detect_anomaly():
+    optimizer.zero_grad()
+    loss = model(loss_weights=loss_weights)
+    print("loss:",loss)
+    loop.set_description(f"Loss {loss.data:.4f}")
+    loss.backward()
+    optimizer.step()
 
-        parameters = model.get_parameters()
-        # print("scales_object", parameters["scales_object"])
-        # print("scales_person", parameters["scales_person"])
-        # print("rotations_object", parameters["rotations_object"])
-        print("rotations_person", parameters["rotations_person"])
-        # print("translations_object", parameters["translations_object"])
-        print("translations_person", parameters["translations_person"])
+    parameters = model.get_parameters()
+    # print("scales_object", parameters["scales_object"])
+    # print("scales_person", parameters["scales_person"])
+    # print("rotations_object", parameters["rotations_object"])
+    print("rotations_person", parameters["rotations_person"])
+    # print("translations_object", parameters["translations_object"])
+    print("translations_person", parameters["translations_person"])
+
+    if args.simulate:
+        new_verts1 = model.get_verts_object()
+        new_verts2 = model.get_verts_person()
+
+        new_mesh1 = Meshes(
+            verts=new_verts1.to(device),   
+            faces=faces1.unsqueeze(0))
+        new_mesh2 = Meshes(
+            verts=new_verts2.to(device),   
+            faces=faces2.unsqueeze(0))
+
+        new_mesh = join_meshes_as_batch([new_mesh1,new_mesh2])
+        new_verts = new_mesh.verts_packed()
+        new_faces = new_mesh.faces_packed()
+
+        new_mesh = Meshes(verts=new_verts.unsqueeze(0), 
+                faces=new_faces.unsqueeze(0),
+                textures=textures
+                )
+
+        lights = PointLights(device=device, location=[[0.0, 0.0, -3.0]])
+        cameras = FoVPerspectiveCameras(device=device)
+                    
+        raster_settings = RasterizationSettings(
+            image_size = (in_w, in_w),
+            blur_radius = 0,
+            faces_per_pixel = 1,
+        )
+        blend_params = BlendParams(sigma=1e-4, gamma=1e-4, background_color = (0,0,0))
+
+        renderer = MeshRenderer(
+            rasterizer=MeshRasterizer(
+                cameras=cameras, 
+                raster_settings=raster_settings
+            ),
+            shader=SoftPhongShader(
+                device=device, 
+                cameras=cameras,
+                lights=lights,
+                blend_params=blend_params
+            )
+        )
+
+        sigma = 1e-4
+        raster_settings_silhouette = RasterizationSettings(
+            image_size = (in_w, in_w),
+            blur_radius = np.log(1. / 1e-4 - 1.)*sigma, 
+            faces_per_pixel=50, 
+        )
+        renderer_silhouette = MeshRendererWithFragments(
+            rasterizer=MeshRasterizer(
+                cameras=cameras, 
+                raster_settings=raster_settings_silhouette
+            ),
+            shader=SoftSilhouetteShader()
+        )
+
+        smpl_pred, _ = renderer_silhouette(new_mesh2, 
+                            cameras=FoVPerspectiveCameras(device=device), 
+                            lights=PointLights(device=device, location=[[0.0, 0.0, -3.0]]))
+        smpl_pred_silhouette = smpl_pred[..., 3]
+        smpl_pred_silhouette = 1 - smpl_pred_silhouette
+
+        new_square_im = square_im * np.moveaxis(smpl_pred_silhouette.cpu().detach().numpy(), 0, -1)
+
+        with torch.no_grad():
+            newimg = save_out(new_mesh, renderer, combine_opt, device, True, new_square_im, False)
+            simu_img_list.append(newimg.astype(np.uint8))
+
+gen_video_out(outvideo, the_fps=10, img_array=simu_img_list)
 
 
 ##################################################################
