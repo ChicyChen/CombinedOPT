@@ -1,73 +1,53 @@
-# Understanding 3D Object Articulation in Internet Videos
+# Combined Understanding of 3D Plane Articulation and Partial Human Pose Estimation
 
-Code release for our paper
-
-```
-Understanding 3D Object Articulation in Internet Videos
-Shengyi Qian, Linyi Jin, Chris Rockwell, David Fouhey
-```
-
-![teaser](docs/teaser.png)
-
-Please check the [project page](https://jasonqsy.github.io/Articulation3D/) for more details and consider citing our paper if it is helpful:
+Based on paper **Understanding 3D Object Articulation in Internet Videos** and paper **Full-Body Awareness from Partial Observations**.
+Please feel free to point out any mistakes in this repo!
 
 ## Setup
 
-We're using [pyenv](https://github.com/pyenv/pyenv) to set up the anaconda environment.
+Set up the same environment as [Articulation](https://jasonqsy.github.io/Articulation3D/).
 
-```bash
-VERSION_ALIAS="planercnn" PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install anaconda3-2020.11
-```
-
-To install python packages,
-
-```bash
-# pytorch and pytorch3d
-pip install scikit-image matplotlib imageio plotly opencv-python
-conda install -c pytorch pytorch=1.7.1 torchvision cudatoolkit=10.2
-conda install -c fvcore -c iopath -c conda-forge fvcore iopath
-conda install -c bottler nvidiacub
-conda install pytorch3d -c pytorch3d
-
-# detectron2 with pytorch 1.7, cuda 10.2
-python -m pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu102/torch1.7/index.html
-
-# other packages
-pip install mapbox-earcut
-pip install numpy-quaternion
-pip install --upgrade numpy  # upgrade from 1.19 to 1.20, otherwise numpy-quaternion does not work
-pip install imageio-ffmpeg
-
-# install planercnn
-cd planercnn
-pip install -e .
-```
-
-If necessary, download our [pretrained model](https://www.dropbox.com/s/50uderl5ynan2yt/model_0059999.pth?dl=0) and put it at `exps/model_0059999.pth`
-
-```bash
-mkdir exps
-cd exps
-wget https://www.dropbox.com/s/50uderl5ynan2yt/model_0059999.pth?dl=0
-```
+Set up additional environment for [SMPL](https://smpl.is.tue.mpg.de/) and [GraphCMR](https://github.com/crockwell/partial_humans/blob/master/GraphCMR/README.md). Make packeges compilable in python 3.7 environment.
 
 ## Demo
 
-To run the model and temporal optimization on a video,
+To run the model on a video, run
 
 ```bash
-python tools/inference.py --config config/config.yaml --input example.mp4 --output output
+python combined_demo.py --config config/config.yaml --input /z/syqian/articulation_data/step2_filtered_clips/CxTFIEpSgew_34_360.mp4 --output demo_3336_output --save-obj --webvis
 ```
 
-To save the 3d model, add `--save-obj` and `--webvis` flags,
+or
 
 ```bash
-python tools/inference.py --config config/config.yaml --input example.mp4 --output output --save-obj --webvis
+python combined_demo.py --config config/config.yaml --save-obj --webvis
 ```
 
-## Experiments 
+To save the 3d model, add `--save-obj` and `--webvis` flags.
 
-To be released.
+Per step demo can be done by running
+```bash
+python generate_mesh_mask.py --config config/config.yaml --input /z/syqian/articulation_data/step2_filtered_clips/CxTFIEpSgew_34_360.mp4 --output /data/siyich/cmr_art/mask_mesh_3336_output --webvis
+```
+
+then
+
+```bash
+python generate_mesh_mask.py --config config/config.yaml --input /z/syqian/articulation_data/step2_filtered_clips/CxTFIEpSgew_34_360.mp4 --output /data/siyich/cmr_art/mask_mesh_3336_output --webvis
+```
+```bash
+python opt_single_img.py --input /data/siyich/cmr_art/mask_mesh_3336_output --frame 60 --output /data/siyich/cmr_art/opt_3336_output
+```
+
+or
+
+```bash
+python generate_mesh_mask.py --config config/config.yaml --input /z/syqian/articulation_data/step2_filtered_clips/CxTFIEpSgew_34_360.mp4 --output /data/siyich/cmr_art/mask_mesh_3336_output --webvis
+```
+```bash
+python opt_pose_img.py --input /data/siyich/cmr_art/mask_mesh_3336_output --frame 60 --output /data/siyich/cmr_art/opt_3336_output
+```
+
 
 ## Acknowledgment
 
